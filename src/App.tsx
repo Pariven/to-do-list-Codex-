@@ -6,6 +6,8 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Clock3,
   FileText,
@@ -115,21 +117,18 @@ function App() {
     setNoteModal(null)
   }
   function deleteNote(id: string) { setNotes((current) => current.filter((note) => note.id !== id)); setNoteModal(null) }
-  function toggleNavigation() {
-    if (window.matchMedia('(max-width: 680px)').matches) setMobileMenu(true)
-    else setSidebarCollapsed((collapsed) => !collapsed)
-  }
 
   return (
     <div className={`app-shell mode-${theme} palette-${palette} style-${visualStyle} wallpaper-${wallpaper} shade-${wallpaperShade}`}>
       <aside className={`sidebar ${mobileMenu ? 'is-open' : ''} ${sidebarCollapsed ? 'is-collapsed' : ''}`}>
+        <button className="sidebar-toggle" aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}>{sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
         <div className="brand"><div className="brand-mark"><CalendarDays size={16} /></div><div><strong>My Daily Space</strong><span>Make room for what matters</span></div></div>
         <div className="sidebar-section-label">Workspace</div>
         <nav className="main-nav">{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? 'nav-item active' : 'nav-item'} onClick={() => { setView(id); setMobileMenu(false) }}><Icon size={18} /><span>{label}</span>{id === 'tasks' && <b>{tasks.filter((task) => task.status !== 'completed').length}</b>}</button>)}</nav>
       </aside>
       {mobileMenu && <button className="scrim" aria-label="Close menu" onClick={() => setMobileMenu(false)} />}
       <main className="main-content">
-        <header className="topbar"><button className="icon-button menu-button" aria-label="Toggle navigation" onClick={toggleNavigation}><Menu size={21} /></button><div className="topbar-date"><span className="eyebrow-dot" />{topbarDate}</div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
+        <header className="topbar"><button className="icon-button menu-button" aria-label="Open menu" onClick={() => setMobileMenu(true)}><Menu size={21} /></button><div className="topbar-date"><span className="eyebrow-dot" />{topbarDate}</div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
         <div className="page-wrap">
           {view === 'dashboard' && <Dashboard tasks={tasks} todayTasks={todayTasks} progress={progress} onToggle={toggleTask} onOpenTask={setTaskModal} onNavigate={setView} />}
           {view === 'tasks' && <TasksPage tasks={tasks} onToggle={toggleTask} onOpenTask={setTaskModal} onNewTask={() => setTaskModal('new')} />}
@@ -150,8 +149,8 @@ function Dashboard({ tasks, todayTasks, progress, onToggle, onOpenTask, onNaviga
   return <>
     <section className="dashboard-grid">
       <div className="progress-card"><div className="card-heading"><div><span className="section-kicker">Today’s rhythm</span><h2>{progress}% <small>complete</small></h2></div><div className="progress-ring" style={{ '--progress': `${progress * 3.6}deg` } as CSSProperties}><span>{todayTasks.filter((task) => task.status === 'completed').length}<small>/{todayTasks.length}</small></span></div></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><p>{progress === 100 ? 'Everything is wrapped for today.' : `${todayTasks.filter((task) => task.status !== 'completed').length} things still have your attention.`}</p></div>
-      <div className="stat-card"><div className="stat-icon blue"><ClipboardList size={18} /></div><span className="section-kicker">Open tasks</span><strong>{tasks.filter((task) => task.status !== 'completed').length}</strong><p>Across your space <ArrowUpRight size={14} /></p></div>
-      <div className="stat-card"><div className="stat-icon amber"><Clock3 size={18} /></div><span className="section-kicker">Next up</span><strong>{upcoming[0]?.dueTime ?? '—'}</strong><p>{upcoming[0]?.title ?? 'No tasks waiting'}</p></div>
+      <div className="stat-card open-tasks-card"><div className="stat-icon blue"><ClipboardList size={18} /></div><span className="section-kicker">Open tasks</span><strong>{tasks.filter((task) => task.status !== 'completed').length}</strong><p>Across your space <ArrowUpRight size={14} /></p></div>
+      <div className="stat-card next-up-card"><div className="stat-icon amber"><Clock3 size={18} /></div><span className="section-kicker">Next up</span><strong>{upcoming[0]?.dueTime ?? '—'}</strong><p>{upcoming[0]?.title ?? 'No tasks waiting'}</p></div>
     </section>
     <section className="content-grid"><div className="panel task-panel"><div className="panel-header"><div><span className="section-kicker">Your focus</span><h2>Today’s tasks</h2></div><button className="text-button" onClick={() => onNavigate('tasks')}>View all <ArrowUpRight size={15} /></button></div><div className="task-list">{todayTasks.map((task) => <TaskRow key={task.id} task={task} onToggle={onToggle} onOpen={onOpenTask} />)}{todayTasks.length === 0 && <EmptyState icon={<CheckCircle2 />} title="A clear day" text="Add a task when something needs your attention." />}</div></div><div className="panel upcoming-panel"><div className="panel-header"><div><span className="section-kicker">Coming up</span><h2>Next on your mind</h2></div><button className="icon-button subtle"><MoreHorizontal size={18} /></button></div><div className="upcoming-list">{upcoming.map((task) => <button className="upcoming-item" key={task.id} onClick={() => onOpenTask(task)}><div className={`priority-line ${task.priority}`} /><div><strong>{task.title}</strong><span>{task.dueTime} · {task.category}</span></div><ChevronDown size={16} /></button>)}</div><div className="note-callout"><div className="note-callout-icon"><FileText size={17} /></div><div><span className="section-kicker">Pinned note</span><strong>Remember to leave some breathing room.</strong></div></div></div></section>
   </>
