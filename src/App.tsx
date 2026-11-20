@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import {
   ArrowUpRight,
-  Bell,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -19,10 +18,10 @@ import {
   Plus,
   Search,
   Settings,
-  Sparkles,
   Sun,
   Target,
   Trash2,
+  UserRound,
   X,
 } from 'lucide-react'
 
@@ -32,6 +31,7 @@ type View = 'dashboard' | 'tasks' | 'calendar' | 'notes' | 'settings'
 type ThemeMode = 'light' | 'dark'
 type VisualStyle = 'classic' | 'glass'
 type Wallpaper = 'abstract' | 'skull' | 'orb'
+type WallpaperShade = 'clear' | 'shaded'
 type PaletteName = 'sage' | 'lavender' | 'ocean' | 'creamNavy' | 'aquaMint' | 'purpleMauve' | 'indigo'
 
 type Task = {
@@ -75,7 +75,6 @@ const navItems: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'tasks', label: 'My tasks', icon: ClipboardList },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'notes', label: 'Notepad', icon: NotebookPen },
-  { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
 function App() {
@@ -86,7 +85,10 @@ function App() {
   const [palette, setPalette] = useState<PaletteName>(() => readStorage('daily-space-palette', 'sage'))
   const [visualStyle, setVisualStyle] = useState<VisualStyle>(() => readStorage('daily-space-visual-style', 'classic'))
   const [wallpaper, setWallpaper] = useState<Wallpaper>(() => readStorage('daily-space-wallpaper', 'abstract'))
+  const [wallpaperShade, setWallpaperShade] = useState<WallpaperShade>(() => readStorage('daily-space-wallpaper-shade', 'shaded'))
   const [mobileMenu, setMobileMenu] = useState(false)
+  const [quickMenu, setQuickMenu] = useState(false)
+  const [profileMenu, setProfileMenu] = useState(false)
   const [taskModal, setTaskModal] = useState<Task | 'new' | null>(null)
   const [noteModal, setNoteModal] = useState<Note | 'new' | null>(null)
 
@@ -96,6 +98,7 @@ function App() {
   useEffect(() => { localStorage.setItem('daily-space-palette', JSON.stringify(palette)) }, [palette])
   useEffect(() => { localStorage.setItem('daily-space-visual-style', JSON.stringify(visualStyle)) }, [visualStyle])
   useEffect(() => { localStorage.setItem('daily-space-wallpaper', JSON.stringify(wallpaper)) }, [wallpaper])
+  useEffect(() => { localStorage.setItem('daily-space-wallpaper-shade', JSON.stringify(wallpaperShade)) }, [wallpaperShade])
 
   const completed = tasks.filter((task) => task.status === 'completed').length
   const todayTasks = tasks.filter((task) => task.dueDate === today)
@@ -114,9 +117,9 @@ function App() {
   function deleteNote(id: string) { setNotes((current) => current.filter((note) => note.id !== id)); setNoteModal(null) }
 
   return (
-    <div className={`app-shell mode-${theme} palette-${palette} style-${visualStyle} wallpaper-${wallpaper}`}>
+    <div className={`app-shell mode-${theme} palette-${palette} style-${visualStyle} wallpaper-${wallpaper} shade-${wallpaperShade}`}>
       <aside className={`sidebar ${mobileMenu ? 'is-open' : ''}`}>
-        <div className="brand"><div className="brand-mark"><Sparkles size={16} /></div><div><strong>My Daily Space</strong><span>Make room for what matters</span></div></div>
+        <div className="brand"><div className="brand-mark"><CalendarDays size={16} /></div><div><strong>My Daily Space</strong><span>Make room for what matters</span></div></div>
         <div className="sidebar-section-label">Workspace</div>
         <nav className="main-nav">{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? 'nav-item active' : 'nav-item'} onClick={() => { setView(id); setMobileMenu(false) }}><Icon size={18} /><span>{label}</span>{id === 'tasks' && <b>{tasks.filter((task) => task.status !== 'completed').length}</b>}</button>)}</nav>
         <div className="sidebar-spacer" />
@@ -125,16 +128,16 @@ function App() {
       </aside>
       {mobileMenu && <button className="scrim" aria-label="Close menu" onClick={() => setMobileMenu(false)} />}
       <main className="main-content">
-        <header className="topbar"><button className="icon-button menu-button" aria-label="Open menu" onClick={() => setMobileMenu(true)}><Menu size={21} /></button><div className="breadcrumbs"><span>Workspace</span><b>/</b><strong>{navItems.find((item) => item.id === view)?.label}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Toggle theme" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}</button><button className="notification-button" aria-label="Notifications"><Bell size={18} /><i /></button></div></header>
+        <header className="topbar"><button className="icon-button menu-button" aria-label="Open menu" onClick={() => setMobileMenu(true)}><Menu size={21} /></button><div className="breadcrumbs"><span>Workspace</span><b>/</b><strong>{view === 'settings' ? 'Settings' : navItems.find((item) => item.id === view)?.label}</strong></div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
         <div className="page-wrap">
           {view === 'dashboard' && <Dashboard tasks={tasks} todayTasks={todayTasks} progress={progress} onToggle={toggleTask} onOpenTask={setTaskModal} onNewTask={() => setTaskModal('new')} onNavigate={setView} />}
           {view === 'tasks' && <TasksPage tasks={tasks} onToggle={toggleTask} onOpenTask={setTaskModal} onNewTask={() => setTaskModal('new')} />}
           {view === 'calendar' && <CalendarPage tasks={tasks} onOpenTask={setTaskModal} />}
           {view === 'notes' && <NotesPage notes={notes} onOpenNote={setNoteModal} onNewNote={() => setNoteModal('new')} />}
-          {view === 'settings' && <SettingsPage theme={theme} palette={palette} visualStyle={visualStyle} wallpaper={wallpaper} onThemeChange={setTheme} onPaletteChange={setPalette} onVisualStyleChange={setVisualStyle} onWallpaperChange={setWallpaper} />}
+          {view === 'settings' && <SettingsPage theme={theme} palette={palette} visualStyle={visualStyle} wallpaper={wallpaper} wallpaperShade={wallpaperShade} onThemeChange={setTheme} onPaletteChange={setPalette} onVisualStyleChange={setVisualStyle} onWallpaperChange={setWallpaper} onWallpaperShadeChange={setWallpaperShade} />}
         </div>
       </main>
-      <nav className="mobile-nav">{navItems.slice(0, 4).map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? 'active' : ''} onClick={() => setView(id)}><Icon size={19} /><span>{label}</span></button>)}</nav>
+      <div className={`quick-add ${quickMenu ? 'is-open' : ''}`}><div className="quick-add-options"><button onClick={() => { setTaskModal('new'); setQuickMenu(false) }}><Plus size={17} /><span>Add task</span></button><button onClick={() => { setNoteModal('new'); setQuickMenu(false) }}><NotebookPen size={17} /><span>New note</span></button><button onClick={() => { setView('calendar'); setQuickMenu(false) }}><CalendarDays size={17} /><span>Calendar</span></button></div><button className="quick-add-button" aria-label="Quick add" onClick={() => setQuickMenu((open) => !open)}><Plus size={23} /></button></div>
       {taskModal && <TaskModal task={taskModal === 'new' ? null : taskModal} onSave={updateTask} onDelete={deleteTask} onClose={() => setTaskModal(null)} />}
       {noteModal && <NoteModal note={noteModal === 'new' ? null : noteModal} onSave={updateNote} onDelete={deleteNote} onClose={() => setNoteModal(null)} />}
     </div>
@@ -144,7 +147,7 @@ function App() {
 function Dashboard({ tasks, todayTasks, progress, onToggle, onOpenTask, onNewTask, onNavigate }: { tasks: Task[]; todayTasks: Task[]; progress: number; onToggle: (id: string) => void; onOpenTask: (task: Task) => void; onNewTask: () => void; onNavigate: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== 'completed').slice(0, 3)
   return <>
-    <section className="welcome-row"><div><div className="eyebrow"><span className="eyebrow-dot" /> Friday, November 20, 2026</div><h1>A thoughtful day, <em>Alex.</em></h1><p className="page-intro">A little structure can make space for the good stuff.</p></div><button className="primary-button" onClick={onNewTask}><Plus size={18} /> Add task</button></section>
+    <section className="welcome-row"><div><div className="eyebrow dashboard-date"><span className="eyebrow-dot" /> Friday, November 20, 2026</div><h1>Today, <em>Alex.</em></h1></div><button className="primary-button" onClick={onNewTask}><Plus size={18} /> Add task</button></section>
     <section className="dashboard-grid">
       <div className="progress-card"><div className="card-heading"><div><span className="section-kicker">Today’s rhythm</span><h2>{progress}% <small>complete</small></h2></div><div className="progress-ring" style={{ '--progress': `${progress * 3.6}deg` } as CSSProperties}><span>{todayTasks.filter((task) => task.status === 'completed').length}<small>/{todayTasks.length}</small></span></div></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><p>{progress === 100 ? 'Everything is wrapped for today.' : `${todayTasks.filter((task) => task.status !== 'completed').length} things still have your attention.`}</p></div>
       <div className="stat-card"><div className="stat-icon blue"><ClipboardList size={18} /></div><span className="section-kicker">Open tasks</span><strong>{tasks.filter((task) => task.status !== 'completed').length}</strong><p>Across your space <ArrowUpRight size={14} /></p></div>
@@ -168,8 +171,9 @@ function TaskRow({ task, onToggle, onOpen, detailed = false }: { task: Task; onT
 function CalendarPage({ tasks, onOpenTask }: { tasks: Task[]; onOpenTask: (task: Task) => void }) {
   const now = new Date()
   const [month, setMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1))
+  const [selectedDate, setSelectedDate] = useState(today)
   const monthLabel = month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-  const agendaLabel = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+  const agendaLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
   const firstWeekday = (month.getDay() + 6) % 7
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
   const previousMonthDays = new Date(month.getFullYear(), month.getMonth(), 0).getDate()
@@ -186,15 +190,16 @@ function CalendarPage({ tasks, onOpenTask }: { tasks: Task[]; onOpenTask: (task:
       const day = isCurrentMonth ? offset : offset < 1 ? previousMonthDays + offset : offset - daysInMonth
       const dayTasks = tasks.filter((task) => task.dueDate === dateKey(offset))
       const isToday = dateKey(offset) === today
-      return <div className={`calendar-cell ${isToday ? 'current' : ''} ${isCurrentMonth ? '' : 'muted'}`} key={dateKey(offset)}><span>{day}</span>{dayTasks.slice(0, 2).map((task) => <button key={task.id} className={`calendar-task ${task.status}`} onClick={() => onOpenTask(task)}>{task.title}</button>)}</div>
-    })}</div></div><div className="panel agenda-panel"><span className="section-kicker">{agendaLabel}</span><h2>Today’s agenda</h2>{tasks.filter((task) => task.dueDate === today).map((task) => <button className="agenda-item" key={task.id} onClick={() => onOpenTask(task)}><span>{task.dueTime}</span><div><strong>{task.title}</strong><small>{task.category}</small></div></button>)}</div></div>
+      const key = dateKey(offset)
+      return <div className={`calendar-cell ${isToday ? 'current' : ''} ${key === selectedDate ? 'selected' : ''} ${isCurrentMonth ? '' : 'muted'}`} key={key} role="button" tabIndex={0} aria-label={`View tasks for ${key}`} onClick={() => setSelectedDate(key)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setSelectedDate(key) }}><span>{day}</span>{dayTasks.slice(0, 2).map((task) => <button key={task.id} className={`calendar-task ${task.status}`} onClick={(event) => { event.stopPropagation(); onOpenTask(task) }}>{task.title}</button>)}</div>
+    })}</div></div><div className="panel agenda-panel"><span className="section-kicker">{agendaLabel}</span><h2>{selectedDate === today ? 'Today’s agenda' : 'Selected day'}</h2>{tasks.filter((task) => task.dueDate === selectedDate).map((task) => <button className="agenda-item" key={task.id} onClick={() => onOpenTask(task)}><span>{task.dueTime}</span><div><strong>{task.title}</strong><small>{task.category}</small></div></button>)}{tasks.filter((task) => task.dueDate === selectedDate).length === 0 && <EmptyState icon={<CalendarDays />} title="Nothing planned" text="Select another date to review its activity." />}</div></div>
   </>
 }
 
 function NotesPage({ notes, onOpenNote, onNewNote }: { notes: Note[]; onOpenNote: (note: Note) => void; onNewNote: () => void }) { const [query, setQuery] = useState(''); const visible = notes.filter((note) => `${note.title} ${note.content}`.toLowerCase().includes(query.toLowerCase())); return <><section className="page-heading"><div><span className="eyebrow"><span className="eyebrow-dot" /> Your thoughts</span><h1>A place to put it down.</h1><p className="page-intro">Loose ends, bright ideas, and everything in between.</p></div><button className="primary-button" onClick={onNewNote}><Plus size={18} /> New note</button></section><div className="notes-toolbar"><div className="search-box"><Search size={17} /><input placeholder="Search notes" value={query} onChange={(event) => setQuery(event.target.value)} /></div><span>{notes.length} notes</span></div><div className="notes-grid">{visible.map((note) => <button className={`note-card ${note.pinned ? 'pinned' : ''}`} key={note.id} onClick={() => onOpenNote(note)}><div className="note-card-top"><FileText size={17} /><span>{note.updatedAt}</span>{note.pinned && <Flag size={14} className="pin-icon" />}</div><h3>{note.title}</h3><p>{note.content}</p><div className="note-card-bottom"><span>Open note</span><ArrowUpRight size={15} /></div></button>)}<button className="new-note-card" onClick={onNewNote}><div><Plus size={21} /></div><strong>Capture a thought</strong><span>Start a new note</span></button></div></> }
 
-function SettingsPage({ theme, palette, visualStyle, wallpaper, onThemeChange, onPaletteChange, onVisualStyleChange, onWallpaperChange }: { theme: ThemeMode; palette: PaletteName; visualStyle: VisualStyle; wallpaper: Wallpaper; onThemeChange: (mode: ThemeMode) => void; onPaletteChange: (palette: PaletteName) => void; onVisualStyleChange: (style: VisualStyle) => void; onWallpaperChange: (wallpaper: Wallpaper) => void }) {
-  return <><section className="page-heading"><div><span className="eyebrow"><span className="eyebrow-dot" /> Preferences</span><h1>Make it feel like yours.</h1><p className="page-intro">Your space, tuned to the way you like to work.</p></div></section><div className="settings-layout"><section className="panel settings-panel"><div className="settings-section"><div className="settings-copy"><h2>Appearance</h2><p>Choose how My Daily Space looks throughout the day.</p></div><div className="mode-picker">{(['light', 'dark'] as ThemeMode[]).map((mode) => <button key={mode} className={theme === mode ? 'selected' : ''} onClick={() => onThemeChange(mode)}>{mode === 'light' ? <Sun size={18} /> : <Moon size={18} />}<span>{mode === 'light' ? 'Light' : 'Dark'}</span>{theme === mode && <Check size={15} />}</button>)}</div></div><div className="settings-divider" /><div className="settings-section"><div className="settings-copy"><h2>Interface style</h2><p>Choose a solid classic surface or a soft liquid-glass finish.</p></div><div className="mode-picker">{(['classic', 'glass'] as VisualStyle[]).map((style) => <button key={style} className={visualStyle === style ? 'selected' : ''} onClick={() => onVisualStyleChange(style)}><span>{style === 'classic' ? 'Classic' : 'Liquid glass'}</span>{visualStyle === style && <Check size={15} />}</button>)}</div></div>{visualStyle === 'glass' && <><div className="settings-divider" /><div className="settings-section wallpaper-section"><div className="settings-copy"><h2>Glass wallpaper</h2><p>Choose the backdrop visible through your glass panels.</p></div><div className="wallpaper-options"><button className={wallpaper === 'abstract' ? 'wallpaper-choice selected abstract-wallpaper' : 'wallpaper-choice abstract-wallpaper'} onClick={() => onWallpaperChange('abstract')}><span>Abstract glow</span>{wallpaper === 'abstract' && <Check size={15} />}</button><button className={wallpaper === 'skull' ? 'wallpaper-choice selected skull-wallpaper' : 'wallpaper-choice skull-wallpaper'} onClick={() => onWallpaperChange('skull')}><span>Skull wallpaper</span>{wallpaper === 'skull' && <Check size={15} />}</button><button className={wallpaper === 'orb' ? 'wallpaper-choice selected orb-wallpaper' : 'wallpaper-choice orb-wallpaper'} onClick={() => onWallpaperChange('orb')}><span>Dark orb</span>{wallpaper === 'orb' && <Check size={15} />}</button></div></div></>}<div className="settings-divider" /><div className="settings-section palette-section"><div className="settings-copy"><h2>Colour palette</h2><p>Set the tone for your daily space. Changes save automatically.</p></div><div className="palette-options">{(Object.keys(palettes) as PaletteName[]).map((name) => <button key={name} className={palette === name ? 'palette-choice selected' : 'palette-choice'} onClick={() => onPaletteChange(name)}><div className="swatches">{palettes[name].colors.map((color) => <i key={color} style={{ backgroundColor: color }} />)}</div><span>{palettes[name].label}</span>{palette === name && <Check size={15} />}</button>)}</div></div></section><aside className="settings-preview"><span className="section-kicker">Live preview</span><div className="preview-window"><div className="preview-top"><div className="preview-dot" /><div className="preview-line short" /></div><div className="preview-body"><div className="preview-sidebar" /><div className="preview-content"><div className="preview-line" /><div className="preview-line medium" /><div className="preview-card"><CheckCircle2 size={15} /><div className="preview-line medium" /></div><div className="preview-card small"><Clock3 size={15} /><div className="preview-line short" /></div></div></div></div><p>Preferences are saved on this device.</p></aside></div></> 
+function SettingsPage({ theme, palette, visualStyle, wallpaper, wallpaperShade, onThemeChange, onPaletteChange, onVisualStyleChange, onWallpaperChange, onWallpaperShadeChange }: { theme: ThemeMode; palette: PaletteName; visualStyle: VisualStyle; wallpaper: Wallpaper; wallpaperShade: WallpaperShade; onThemeChange: (mode: ThemeMode) => void; onPaletteChange: (palette: PaletteName) => void; onVisualStyleChange: (style: VisualStyle) => void; onWallpaperChange: (wallpaper: Wallpaper) => void; onWallpaperShadeChange: (shade: WallpaperShade) => void }) {
+  return <><section className="page-heading"><div><span className="eyebrow"><span className="eyebrow-dot" /> Preferences</span><h1>Make it feel like yours.</h1><p className="page-intro">Your space, tuned to the way you like to work.</p></div></section><div className="settings-layout"><section className="panel settings-panel"><div className="settings-section"><div className="settings-copy"><h2>Appearance</h2><p>Choose how My Daily Space looks throughout the day.</p></div><div className="mode-picker">{(['light', 'dark'] as ThemeMode[]).map((mode) => <button key={mode} className={theme === mode ? 'selected' : ''} onClick={() => onThemeChange(mode)}>{mode === 'light' ? <Sun size={18} /> : <Moon size={18} />}<span>{mode === 'light' ? 'Light' : 'Dark'}</span>{theme === mode && <Check size={15} />}</button>)}</div></div><div className="settings-divider" /><div className="settings-section"><div className="settings-copy"><h2>Interface style</h2><p>Choose a solid classic surface or a soft liquid-glass finish.</p></div><div className="mode-picker">{(['classic', 'glass'] as VisualStyle[]).map((style) => <button key={style} className={visualStyle === style ? 'selected' : ''} onClick={() => onVisualStyleChange(style)}><span>{style === 'classic' ? 'Classic' : 'Liquid glass'}</span>{visualStyle === style && <Check size={15} />}</button>)}</div></div>{visualStyle === 'glass' && <><div className="settings-divider" /><div className="settings-section wallpaper-section"><div className="settings-copy"><h2>Glass wallpaper</h2><p>Choose the backdrop visible through your glass panels.</p></div><div className="wallpaper-options">{(['abstract', 'skull', 'orb'] as Wallpaper[]).map((item) => <button key={item} className={`wallpaper-choice ${item}-wallpaper ${wallpaper === item ? 'selected' : ''}`} onClick={() => onWallpaperChange(item)}><span>{item === 'abstract' ? 'Abstract glow' : item === 'skull' ? 'Skull wallpaper' : 'Dark orb'}</span>{wallpaper === item && <Check size={15} />}</button>)}</div></div><div className="settings-divider" /><div className="settings-section"><div className="settings-copy"><h2>Background visibility</h2><p>Show the wallpaper clearly, or add a soft shade for a quieter backdrop.</p></div><div className="mode-picker">{(['clear', 'shaded'] as WallpaperShade[]).map((shade) => <button key={shade} className={wallpaperShade === shade ? 'selected' : ''} onClick={() => onWallpaperShadeChange(shade)}><span>{shade === 'clear' ? 'Clear' : 'Shaded'}</span>{wallpaperShade === shade && <Check size={15} />}</button>)}</div></div></>}<div className="settings-divider" /><div className="settings-section palette-section"><div className="settings-copy"><h2>Colour palette</h2><p>Set the tone for your daily space. Changes save automatically.</p></div><div className="palette-options">{(Object.keys(palettes) as PaletteName[]).map((name) => <button key={name} className={palette === name ? 'palette-choice selected' : 'palette-choice'} onClick={() => onPaletteChange(name)}><div className="swatches">{palettes[name].colors.map((color) => <i key={color} style={{ backgroundColor: color }} />)}</div><span>{palettes[name].label}</span>{palette === name && <Check size={15} />}</button>)}</div></div></section><aside className="settings-preview"><span className="section-kicker">Live preview</span><div className="preview-window"><div className="preview-top"><div className="preview-dot" /><div className="preview-line short" /></div><div className="preview-body"><div className="preview-sidebar" /><div className="preview-content"><div className="preview-line" /><div className="preview-line medium" /><div className="preview-card"><CheckCircle2 size={15} /><div className="preview-line medium" /></div><div className="preview-card small"><Clock3 size={15} /><div className="preview-line short" /></div></div></div></div><p>Preferences are saved on this device.</p></aside></div></> 
 }
 
 function TaskModal({ task, onSave, onDelete, onClose }: { task: Task | null; onSave: (task: Task) => void; onDelete: (id: string) => void; onClose: () => void }) { const [draft, setDraft] = useState<Task>(task ?? { id: crypto.randomUUID(), title: '', description: '', dueDate: today, dueTime: '', category: 'Personal', priority: 'medium', status: 'todo', memo: '' }); const update = (key: keyof Task, value: string) => setDraft((current) => ({ ...current, [key]: value })); return <Modal title={task ? 'Edit task' : 'New task'} onClose={onClose}><div className="form-grid"><label className="full">Task title<input autoFocus value={draft.title} onChange={(event) => update('title', event.target.value)} placeholder="What needs your attention?" /></label><label className="full">Description<textarea value={draft.description} onChange={(event) => update('description', event.target.value)} placeholder="Add a little context" rows={2} /></label><label>Due date<input type="date" value={draft.dueDate} onChange={(event) => update('dueDate', event.target.value)} /></label><label>Time<input type="time" value={draft.dueTime} onChange={(event) => update('dueTime', event.target.value)} /></label><label>Category<select value={draft.category} onChange={(event) => update('category', event.target.value)}>{['Personal', 'Work', 'Health', 'Family', 'Shopping'].map((item) => <option key={item}>{item}</option>)}</select></label><label>Priority<select value={draft.priority} onChange={(event) => update('priority', event.target.value)}><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label className="full">Task memo<textarea value={draft.memo} onChange={(event) => update('memo', event.target.value)} placeholder="Instructions, preparation, or helpful context" rows={3} /></label></div><div className="modal-actions">{task && <button className="danger-button" onClick={() => onDelete(task.id)}><Trash2 size={16} /> Delete</button>}<span /><button className="outline-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={!draft.title.trim()} onClick={() => onSave(draft)}><Check size={16} /> Save task</button></div></Modal> }
