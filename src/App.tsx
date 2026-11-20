@@ -19,7 +19,6 @@ import {
   Search,
   Settings,
   Sun,
-  Target,
   Trash2,
   UserRound,
   X,
@@ -87,6 +86,7 @@ function App() {
   const [wallpaper, setWallpaper] = useState<Wallpaper>(() => readStorage('daily-space-wallpaper', 'abstract'))
   const [wallpaperShade, setWallpaperShade] = useState<WallpaperShade>(() => readStorage('daily-space-wallpaper-shade', 'shaded'))
   const [mobileMenu, setMobileMenu] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [quickMenu, setQuickMenu] = useState(false)
   const [profileMenu, setProfileMenu] = useState(false)
   const [taskModal, setTaskModal] = useState<Task | 'new' | null>(null)
@@ -100,9 +100,9 @@ function App() {
   useEffect(() => { localStorage.setItem('daily-space-wallpaper', JSON.stringify(wallpaper)) }, [wallpaper])
   useEffect(() => { localStorage.setItem('daily-space-wallpaper-shade', JSON.stringify(wallpaperShade)) }, [wallpaperShade])
 
-  const completed = tasks.filter((task) => task.status === 'completed').length
   const todayTasks = tasks.filter((task) => task.dueDate === today)
   const progress = todayTasks.length ? Math.round((todayTasks.filter((task) => task.status === 'completed').length / todayTasks.length) * 100) : 0
+  const topbarDate = new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 
   function updateTask(updatedTask: Task) {
     setTasks((current) => current.some((task) => task.id === updatedTask.id) ? current.map((task) => task.id === updatedTask.id ? updatedTask : task) : [updatedTask, ...current])
@@ -115,20 +115,21 @@ function App() {
     setNoteModal(null)
   }
   function deleteNote(id: string) { setNotes((current) => current.filter((note) => note.id !== id)); setNoteModal(null) }
+  function toggleNavigation() {
+    if (window.matchMedia('(max-width: 680px)').matches) setMobileMenu(true)
+    else setSidebarCollapsed((collapsed) => !collapsed)
+  }
 
   return (
     <div className={`app-shell mode-${theme} palette-${palette} style-${visualStyle} wallpaper-${wallpaper} shade-${wallpaperShade}`}>
-      <aside className={`sidebar ${mobileMenu ? 'is-open' : ''}`}>
+      <aside className={`sidebar ${mobileMenu ? 'is-open' : ''} ${sidebarCollapsed ? 'is-collapsed' : ''}`}>
         <div className="brand"><div className="brand-mark"><CalendarDays size={16} /></div><div><strong>My Daily Space</strong><span>Make room for what matters</span></div></div>
         <div className="sidebar-section-label">Workspace</div>
         <nav className="main-nav">{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? 'nav-item active' : 'nav-item'} onClick={() => { setView(id); setMobileMenu(false) }}><Icon size={18} /><span>{label}</span>{id === 'tasks' && <b>{tasks.filter((task) => task.status !== 'completed').length}</b>}</button>)}</nav>
-        <div className="sidebar-spacer" />
-        <div className="sidebar-prompt"><div className="prompt-icon"><Target size={17} /></div><strong>Small steps count</strong><p>You have completed {completed} task{completed === 1 ? '' : 's'} so far.</p><button onClick={() => setView('tasks')}>View progress <ArrowUpRight size={14} /></button></div>
-        <div className="profile-row"><div className="avatar">AK</div><div><strong>Alex Kim</strong><span>Personal space</span></div><MoreHorizontal size={17} /></div>
       </aside>
       {mobileMenu && <button className="scrim" aria-label="Close menu" onClick={() => setMobileMenu(false)} />}
       <main className="main-content">
-        <header className="topbar"><button className="icon-button menu-button" aria-label="Open menu" onClick={() => setMobileMenu(true)}><Menu size={21} /></button><div className="breadcrumbs"><span>Workspace</span><b>/</b><strong>{view === 'settings' ? 'Settings' : navItems.find((item) => item.id === view)?.label}</strong></div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
+        <header className="topbar"><button className="icon-button menu-button" aria-label="Toggle navigation" onClick={toggleNavigation}><Menu size={21} /></button><div className="topbar-date"><span className="eyebrow-dot" />{topbarDate}</div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
         <div className="page-wrap">
           {view === 'dashboard' && <Dashboard tasks={tasks} todayTasks={todayTasks} progress={progress} onToggle={toggleTask} onOpenTask={setTaskModal} onNavigate={setView} />}
           {view === 'tasks' && <TasksPage tasks={tasks} onToggle={toggleTask} onOpenTask={setTaskModal} onNewTask={() => setTaskModal('new')} />}
@@ -147,7 +148,6 @@ function App() {
 function Dashboard({ tasks, todayTasks, progress, onToggle, onOpenTask, onNavigate }: { tasks: Task[]; todayTasks: Task[]; progress: number; onToggle: (id: string) => void; onOpenTask: (task: Task) => void; onNavigate: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== 'completed').slice(0, 3)
   return <>
-    <section className="welcome-row"><div><div className="eyebrow dashboard-date"><span className="eyebrow-dot" /> Friday, November 20, 2026</div></div></section>
     <section className="dashboard-grid">
       <div className="progress-card"><div className="card-heading"><div><span className="section-kicker">Today’s rhythm</span><h2>{progress}% <small>complete</small></h2></div><div className="progress-ring" style={{ '--progress': `${progress * 3.6}deg` } as CSSProperties}><span>{todayTasks.filter((task) => task.status === 'completed').length}<small>/{todayTasks.length}</small></span></div></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><p>{progress === 100 ? 'Everything is wrapped for today.' : `${todayTasks.filter((task) => task.status !== 'completed').length} things still have your attention.`}</p></div>
       <div className="stat-card"><div className="stat-icon blue"><ClipboardList size={18} /></div><span className="section-kicker">Open tasks</span><strong>{tasks.filter((task) => task.status !== 'completed').length}</strong><p>Across your space <ArrowUpRight size={14} /></p></div>
