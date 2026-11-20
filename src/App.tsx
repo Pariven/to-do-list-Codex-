@@ -28,7 +28,7 @@ import {
 
 type TaskStatus = 'todo' | 'in_progress' | 'completed'
 type Priority = 'high' | 'medium' | 'low'
-type View = 'dashboard' | 'tasks' | 'calendar' | 'notes' | 'settings'
+type View = 'dashboard' | 'tasks' | 'calendar' | 'notes' | 'bin' | 'settings'
 type ThemeMode = 'light' | 'dark'
 type VisualStyle = 'classic' | 'glass'
 type Wallpaper = 'abstract' | 'skull' | 'orb'
@@ -48,6 +48,7 @@ type Task = {
 }
 
 type Note = { id: string; title: string; content: string; updatedAt: string; pinned: boolean }
+type TrashItem = { id: string; kind: 'task' | 'note'; item: Task | Note; deletedAt: string }
 
 const today = new Date().toISOString().slice(0, 10)
 const initialTasks: Task[] = [
@@ -76,12 +77,14 @@ const navItems: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'tasks', label: 'My tasks', icon: ClipboardList },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'notes', label: 'Notepad', icon: NotebookPen },
+  { id: 'bin', label: 'Bin', icon: Trash2 },
 ]
 
 function App() {
   const [view, setView] = useState<View>('dashboard')
   const [tasks, setTasks] = useState<Task[]>(() => readStorage('daily-space-tasks', initialTasks))
   const [notes, setNotes] = useState<Note[]>(() => readStorage('daily-space-notes', initialNotes))
+  const [trash, setTrash] = useState<TrashItem[]>(() => readStorage('daily-space-trash', []))
   const [theme, setTheme] = useState<ThemeMode>(() => readStorage('daily-space-mode', 'light'))
   const [palette, setPalette] = useState<PaletteName>(() => readStorage('daily-space-palette', 'sage'))
   const [visualStyle, setVisualStyle] = useState<VisualStyle>(() => readStorage('daily-space-visual-style', 'classic'))
@@ -96,6 +99,7 @@ function App() {
 
   useEffect(() => { localStorage.setItem('daily-space-tasks', JSON.stringify(tasks)) }, [tasks])
   useEffect(() => { localStorage.setItem('daily-space-notes', JSON.stringify(notes)) }, [notes])
+  useEffect(() => { localStorage.setItem('daily-space-trash', JSON.stringify(trash)) }, [trash])
   useEffect(() => { localStorage.setItem('daily-space-mode', JSON.stringify(theme)) }, [theme])
   useEffect(() => { localStorage.setItem('daily-space-palette', JSON.stringify(palette)) }, [palette])
   useEffect(() => { localStorage.setItem('daily-space-visual-style', JSON.stringify(visualStyle)) }, [visualStyle])
@@ -111,12 +115,14 @@ function App() {
     setTaskModal(null)
   }
   function toggleTask(id: string) { setTasks((current) => current.map((task) => task.id === id ? { ...task, status: task.status === 'completed' ? 'todo' : 'completed' } : task)) }
-  function deleteTask(id: string) { setTasks((current) => current.filter((task) => task.id !== id)); setTaskModal(null) }
+  function deleteTask(id: string) { setTasks((current) => { const item = current.find((task) => task.id === id); if (item) setTrash((bin) => [{ id: crypto.randomUUID(), kind: 'task', item, deletedAt: new Date().toISOString() }, ...bin]); return current.filter((task) => task.id !== id) }); setTaskModal(null) }
   function updateNote(note: Note) {
     setNotes((current) => current.some((item) => item.id === note.id) ? current.map((item) => item.id === note.id ? note : item) : [note, ...current])
     setNoteModal(null)
   }
-  function deleteNote(id: string) { setNotes((current) => current.filter((note) => note.id !== id)); setNoteModal(null) }
+  function deleteNote(id: string) { setNotes((current) => { const item = current.find((note) => note.id === id); if (item) setTrash((bin) => [{ id: crypto.randomUUID(), kind: 'note', item, deletedAt: new Date().toISOString() }, ...bin]); return current.filter((note) => note.id !== id) }); setNoteModal(null) }
+  function restoreTrash(id: string) { setTrash((current) => { const entry = current.find((item) => item.id === id); if (entry?.kind === 'task') setTasks((items) => [entry.item as Task, ...items]); if (entry?.kind === 'note') setNotes((items) => [entry.item as Note, ...items]); return current.filter((item) => item.id !== id) }) }
+  function permanentlyDelete(id: string) { setTrash((current) => current.filter((item) => item.id !== id)) }
 
   return (
     <div className={`app-shell mode-${theme} palette-${palette} style-${visualStyle} wallpaper-${wallpaper} shade-${wallpaperShade} ${mobileMenu ? 'menu-open' : ''}`}>
@@ -130,10 +136,11 @@ function App() {
       <main className="main-content">
         <header className="topbar"><button className="icon-button menu-button" aria-label="Open menu" onClick={() => setMobileMenu(true)}><Menu size={21} /></button><div className="topbar-date"><span className="eyebrow-dot" />{topbarDate}</div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
         <div className="page-wrap">
-          {view === 'dashboard' && <Dashboard tasks={tasks} todayTasks={todayTasks} progress={progress} onToggle={toggleTask} onOpenTask={setTaskModal} onNavigate={setView} />}
+          {view === 'dashboard' && <Dashboard tasks={tasks} notes={notes} todayTasks={todayTasks} progress={progress} onToggle={toggleTask} onOpenTask={setTaskModal} onNavigate={setView} />}
           {view === 'tasks' && <TasksPage tasks={tasks} onToggle={toggleTask} onOpenTask={setTaskModal} onNewTask={() => setTaskModal('new')} />}
           {view === 'calendar' && <CalendarPage tasks={tasks} onOpenTask={setTaskModal} />}
           {view === 'notes' && <NotesPage notes={notes} onOpenNote={setNoteModal} onNewNote={() => setNoteModal('new')} />}
+          {view === 'bin' && <BinPage trash={trash} onRestore={restoreTrash} onDelete={permanentlyDelete} />}
           {view === 'settings' && <SettingsPage theme={theme} palette={palette} visualStyle={visualStyle} wallpaper={wallpaper} wallpaperShade={wallpaperShade} onThemeChange={setTheme} onPaletteChange={setPalette} onVisualStyleChange={setVisualStyle} onWallpaperChange={setWallpaper} onWallpaperShadeChange={setWallpaperShade} />}
         </div>
       </main>
@@ -144,15 +151,16 @@ function App() {
   )
 }
 
-function Dashboard({ tasks, todayTasks, progress, onToggle, onOpenTask, onNavigate }: { tasks: Task[]; todayTasks: Task[]; progress: number; onToggle: (id: string) => void; onOpenTask: (task: Task) => void; onNavigate: (view: View) => void }) {
+function Dashboard({ tasks, notes, todayTasks, progress, onToggle, onOpenTask, onNavigate }: { tasks: Task[]; notes: Note[]; todayTasks: Task[]; progress: number; onToggle: (id: string) => void; onOpenTask: (task: Task) => void; onNavigate: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== 'completed').slice(0, 3)
   return <>
     <section className="dashboard-grid">
       <div className="progress-card"><div className="card-heading"><div><span className="section-kicker">Today’s rhythm</span><h2>{progress}% <small>complete</small></h2></div><div className="progress-ring" style={{ '--progress': `${progress * 3.6}deg` } as CSSProperties}><span>{todayTasks.filter((task) => task.status === 'completed').length}<small>/{todayTasks.length}</small></span></div></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><p>{progress === 100 ? 'Everything is wrapped for today.' : `${todayTasks.filter((task) => task.status !== 'completed').length} things still have your attention.`}</p></div>
-      <div className="stat-card open-tasks-card"><div className="stat-icon blue"><ClipboardList size={18} /></div><span className="section-kicker">Open tasks</span><strong>{tasks.filter((task) => task.status !== 'completed').length}</strong><p>Across your space <ArrowUpRight size={14} /></p></div>
-      <div className="stat-card next-up-card"><div className="stat-icon amber"><Clock3 size={18} /></div><span className="section-kicker">Next up</span><strong>{upcoming[0]?.dueTime ?? '—'}</strong><p>{upcoming[0]?.title ?? 'No tasks waiting'}</p></div>
+      <div className="stat-card open-tasks-card"><div className="stat-card-top"><span className="section-kicker">Open tasks</span><div className="stat-icon blue"><ClipboardList size={18} /></div></div><strong>{tasks.filter((task) => task.status !== 'completed').length}</strong><p>Across your space <ArrowUpRight size={14} /></p></div>
+      <div className="stat-card next-up-card"><div className="stat-card-top"><span className="section-kicker">Next up</span><div className="stat-icon amber"><Clock3 size={18} /></div></div><strong>{upcoming[0]?.dueTime ?? '—'}</strong><p>{upcoming[0]?.title ?? 'No tasks waiting'}</p></div>
     </section>
-    <section className="content-grid"><div className="panel task-panel"><div className="panel-header"><div><span className="section-kicker">Your focus</span><h2>Today’s tasks</h2></div><button className="text-button" onClick={() => onNavigate('tasks')}>View all <ArrowUpRight size={15} /></button></div><div className="task-list">{todayTasks.map((task) => <TaskRow key={task.id} task={task} onToggle={onToggle} onOpen={onOpenTask} />)}{todayTasks.length === 0 && <EmptyState icon={<CheckCircle2 />} title="A clear day" text="Add a task when something needs your attention." />}</div></div><div className="panel upcoming-panel"><div className="panel-header"><div><span className="section-kicker">Coming up</span><h2>Next on your mind</h2></div><button className="icon-button subtle"><MoreHorizontal size={18} /></button></div><div className="upcoming-list">{upcoming.map((task) => <button className="upcoming-item" key={task.id} onClick={() => onOpenTask(task)}><div className={`priority-line ${task.priority}`} /><div><strong>{task.title}</strong><span>{task.dueTime} · {task.category}</span></div><ChevronDown size={16} /></button>)}</div><div className="note-callout"><div className="note-callout-icon"><FileText size={17} /></div><div><span className="section-kicker">Pinned note</span><strong>Remember to leave some breathing room.</strong></div></div></div></section>
+    <section className="content-grid"><div className="panel task-panel"><div className="panel-header"><div><span className="section-kicker">Your focus</span><h2>Today’s tasks</h2></div><button className="text-button" onClick={() => onNavigate('tasks')}>View all <ArrowUpRight size={15} /></button></div><div className="task-list">{todayTasks.map((task) => <TaskRow key={task.id} task={task} onToggle={onToggle} onOpen={onOpenTask} />)}{todayTasks.length === 0 && <EmptyState icon={<CheckCircle2 />} title="A clear day" text="Add a task when something needs your attention." />}</div></div><div className="panel upcoming-panel"><div className="panel-header"><div><span className="section-kicker">Coming up</span><h2>Next on your mind</h2></div></div><div className="upcoming-list">{upcoming.map((task) => <button className="upcoming-item" key={task.id} onClick={() => onOpenTask(task)}><div className={`priority-line ${task.priority}`} /><div><strong>{task.title}</strong><span>{task.dueTime} · {task.category}</span></div><ChevronDown size={16} /></button>)}</div></div></section>
+    <section className="panel dashboard-notes-panel"><div className="panel-header"><div><span className="section-kicker">Your notes</span><h2>Notes</h2></div><button className="text-button" onClick={() => onNavigate('notes')}>View all <ArrowUpRight size={15} /></button></div><div className="dashboard-notes-list">{notes.slice(0, 3).map((note, index) => <button className={`dashboard-note-row ${note.pinned ? 'is-pinned' : ''}`} key={note.id} onClick={() => onNavigate('notes')}><i className={`note-swatch tone-${index % 3}`} /><div><div className="note-row-title"><strong>{note.title}</strong>{note.pinned && <span>PINNED</span>}</div><small>{note.content}</small></div><ArrowUpRight size={15} /></button>)}{notes.length === 0 && <EmptyState icon={<FileText />} title="No notes yet" text="Use the Notes page to capture an idea." />}</div></section>
   </>
 }
 
@@ -196,6 +204,8 @@ function CalendarPage({ tasks, onOpenTask }: { tasks: Task[]; onOpenTask: (task:
 }
 
 function NotesPage({ notes, onOpenNote, onNewNote }: { notes: Note[]; onOpenNote: (note: Note) => void; onNewNote: () => void }) { const [query, setQuery] = useState(''); const visible = notes.filter((note) => `${note.title} ${note.content}`.toLowerCase().includes(query.toLowerCase())); return <><section className="page-heading"><div><span className="eyebrow"><span className="eyebrow-dot" /> Your thoughts</span><h1>A place to put it down.</h1><p className="page-intro">Loose ends, bright ideas, and everything in between.</p></div><button className="primary-button" onClick={onNewNote}><Plus size={18} /> New note</button></section><div className="notes-toolbar"><div className="search-box"><Search size={17} /><input placeholder="Search notes" value={query} onChange={(event) => setQuery(event.target.value)} /></div><span>{notes.length} notes</span></div><div className="notes-grid">{visible.map((note) => <button className={`note-card ${note.pinned ? 'pinned' : ''}`} key={note.id} onClick={() => onOpenNote(note)}><div className="note-card-top"><FileText size={17} /><span>{note.updatedAt}</span>{note.pinned && <Flag size={14} className="pin-icon" />}</div><h3>{note.title}</h3><p>{note.content}</p><div className="note-card-bottom"><span>Open note</span><ArrowUpRight size={15} /></div></button>)}<button className="new-note-card" onClick={onNewNote}><div><Plus size={21} /></div><strong>Capture a thought</strong><span>Start a new note</span></button></div></> }
+
+function BinPage({ trash, onRestore, onDelete }: { trash: TrashItem[]; onRestore: (id: string) => void; onDelete: (id: string) => void }) { return <><section className="page-heading"><div><span className="eyebrow"><span className="eyebrow-dot" /> Recently deleted</span><h1>Your bin.</h1><p className="page-intro">Restore something whenever you need it, or remove it permanently.</p></div></section><section className="panel bin-panel">{trash.length ? <div className="bin-list">{trash.map((entry) => { const title = entry.item.title; const detail = entry.kind === 'task' ? (entry.item as Task).description : (entry.item as Note).content; return <article className="bin-item" key={entry.id}><div className="bin-item-copy"><span className="bin-kind">{entry.kind === 'task' ? 'Task' : 'Note'} · Deleted {new Date(entry.deletedAt).toLocaleDateString()}</span><strong>{title}</strong><p>{detail}</p></div><div className="bin-actions"><button className="outline-button" onClick={() => onRestore(entry.id)}>Restore</button><button className="danger-button" onClick={() => onDelete(entry.id)}>Delete forever</button></div></article> })}</div> : <EmptyState icon={<Trash2 />} title="Your bin is empty" text="Deleted tasks and notes can be restored here." />}</section></> }
 
 function SettingsPage({ theme, palette, visualStyle, wallpaper, wallpaperShade, onThemeChange, onPaletteChange, onVisualStyleChange, onWallpaperChange, onWallpaperShadeChange }: { theme: ThemeMode; palette: PaletteName; visualStyle: VisualStyle; wallpaper: Wallpaper; wallpaperShade: WallpaperShade; onThemeChange: (mode: ThemeMode) => void; onPaletteChange: (palette: PaletteName) => void; onVisualStyleChange: (style: VisualStyle) => void; onWallpaperChange: (wallpaper: Wallpaper) => void; onWallpaperShadeChange: (shade: WallpaperShade) => void }) {
   return <><section className="page-heading"><div><span className="eyebrow"><span className="eyebrow-dot" /> Preferences</span><h1>Make it feel like yours.</h1><p className="page-intro">Your space, tuned to the way you like to work.</p></div></section><div className="settings-layout"><section className="panel settings-panel"><div className="settings-section"><div className="settings-copy"><h2>Appearance</h2><p>Choose how My Daily Space looks throughout the day.</p></div><div className="mode-picker">{(['light', 'dark'] as ThemeMode[]).map((mode) => <button key={mode} className={theme === mode ? 'selected' : ''} onClick={() => onThemeChange(mode)}>{mode === 'light' ? <Sun size={18} /> : <Moon size={18} />}<span>{mode === 'light' ? 'Light' : 'Dark'}</span>{theme === mode && <Check size={15} />}</button>)}</div></div><div className="settings-divider" /><div className="settings-section"><div className="settings-copy"><h2>Interface style</h2><p>Choose a solid classic surface or a soft liquid-glass finish.</p></div><div className="mode-picker">{(['classic', 'glass'] as VisualStyle[]).map((style) => <button key={style} className={visualStyle === style ? 'selected' : ''} onClick={() => onVisualStyleChange(style)}><span>{style === 'classic' ? 'Classic' : 'Liquid glass'}</span>{visualStyle === style && <Check size={15} />}</button>)}</div></div>{visualStyle === 'glass' && <><div className="settings-divider" /><div className="settings-section wallpaper-section"><div className="settings-copy"><h2>Glass wallpaper</h2><p>Choose the backdrop visible through your glass panels.</p></div><div className="wallpaper-options">{(['abstract', 'skull', 'orb'] as Wallpaper[]).map((item) => <button key={item} className={`wallpaper-choice ${item}-wallpaper ${wallpaper === item ? 'selected' : ''}`} onClick={() => onWallpaperChange(item)}><span>{item === 'abstract' ? 'Abstract glow' : item === 'skull' ? 'Skull wallpaper' : 'Dark orb'}</span>{wallpaper === item && <Check size={15} />}</button>)}</div></div><div className="settings-divider" /><div className="settings-section"><div className="settings-copy"><h2>Background visibility</h2><p>Show the wallpaper clearly, or add a soft shade for a quieter backdrop.</p></div><div className="mode-picker">{(['clear', 'shaded'] as WallpaperShade[]).map((shade) => <button key={shade} className={wallpaperShade === shade ? 'selected' : ''} onClick={() => onWallpaperShadeChange(shade)}><span>{shade === 'clear' ? 'Clear' : 'Shaded'}</span>{wallpaperShade === shade && <Check size={15} />}</button>)}</div></div></>}<div className="settings-divider" /><div className="settings-section palette-section"><div className="settings-copy"><h2>Colour palette</h2><p>Set the tone for your daily space. Changes save automatically.</p></div><div className="palette-options">{(Object.keys(palettes) as PaletteName[]).map((name) => <button key={name} className={palette === name ? 'palette-choice selected' : 'palette-choice'} onClick={() => onPaletteChange(name)}><div className="swatches">{palettes[name].colors.map((color) => <i key={color} style={{ backgroundColor: color }} />)}</div><span>{palettes[name].label}</span>{palette === name && <Check size={15} />}</button>)}</div></div></section><aside className="settings-preview"><span className="section-kicker">Live preview</span><div className="preview-window"><div className="preview-top"><div className="preview-dot" /><div className="preview-line short" /></div><div className="preview-body"><div className="preview-sidebar" /><div className="preview-content"><div className="preview-line" /><div className="preview-line medium" /><div className="preview-card"><CheckCircle2 size={15} /><div className="preview-line medium" /></div><div className="preview-card small"><Clock3 size={15} /><div className="preview-line short" /></div></div></div></div><p>Preferences are saved on this device.</p></aside></div></> 
