@@ -130,7 +130,7 @@ function App() {
       <main className="main-content">
         <header className="topbar"><button className="icon-button menu-button" aria-label="Open menu" onClick={() => setMobileMenu(true)}><Menu size={21} /></button><div className="breadcrumbs"><span>Workspace</span><b>/</b><strong>{view === 'settings' ? 'Settings' : navItems.find((item) => item.id === view)?.label}</strong></div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
         <div className="page-wrap">
-          {view === 'dashboard' && <Dashboard tasks={tasks} todayTasks={todayTasks} progress={progress} onToggle={toggleTask} onOpenTask={setTaskModal} onNewTask={() => setTaskModal('new')} onNavigate={setView} />}
+          {view === 'dashboard' && <Dashboard tasks={tasks} todayTasks={todayTasks} progress={progress} onToggle={toggleTask} onOpenTask={setTaskModal} onNavigate={setView} />}
           {view === 'tasks' && <TasksPage tasks={tasks} onToggle={toggleTask} onOpenTask={setTaskModal} onNewTask={() => setTaskModal('new')} />}
           {view === 'calendar' && <CalendarPage tasks={tasks} onOpenTask={setTaskModal} />}
           {view === 'notes' && <NotesPage notes={notes} onOpenNote={setNoteModal} onNewNote={() => setNoteModal('new')} />}
@@ -144,10 +144,10 @@ function App() {
   )
 }
 
-function Dashboard({ tasks, todayTasks, progress, onToggle, onOpenTask, onNewTask, onNavigate }: { tasks: Task[]; todayTasks: Task[]; progress: number; onToggle: (id: string) => void; onOpenTask: (task: Task) => void; onNewTask: () => void; onNavigate: (view: View) => void }) {
+function Dashboard({ tasks, todayTasks, progress, onToggle, onOpenTask, onNavigate }: { tasks: Task[]; todayTasks: Task[]; progress: number; onToggle: (id: string) => void; onOpenTask: (task: Task) => void; onNavigate: (view: View) => void }) {
   const upcoming = tasks.filter((task) => task.status !== 'completed').slice(0, 3)
   return <>
-    <section className="welcome-row"><div><div className="eyebrow dashboard-date"><span className="eyebrow-dot" /> Friday, November 20, 2026</div><h1>Today, <em>Alex.</em></h1></div><button className="primary-button" onClick={onNewTask}><Plus size={18} /> Add task</button></section>
+    <section className="welcome-row"><div><div className="eyebrow dashboard-date"><span className="eyebrow-dot" /> Friday, November 20, 2026</div></div></section>
     <section className="dashboard-grid">
       <div className="progress-card"><div className="card-heading"><div><span className="section-kicker">Today’s rhythm</span><h2>{progress}% <small>complete</small></h2></div><div className="progress-ring" style={{ '--progress': `${progress * 3.6}deg` } as CSSProperties}><span>{todayTasks.filter((task) => task.status === 'completed').length}<small>/{todayTasks.length}</small></span></div></div><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><p>{progress === 100 ? 'Everything is wrapped for today.' : `${todayTasks.filter((task) => task.status !== 'completed').length} things still have your attention.`}</p></div>
       <div className="stat-card"><div className="stat-icon blue"><ClipboardList size={18} /></div><span className="section-kicker">Open tasks</span><strong>{tasks.filter((task) => task.status !== 'completed').length}</strong><p>Across your space <ArrowUpRight size={14} /></p></div>
