@@ -13,7 +13,7 @@ import {
   FileText,
   Flag,
   LayoutDashboard,
-  Menu,
+  PanelLeftOpen,
   Moon,
   MoreHorizontal,
   NotebookPen,
@@ -121,6 +121,7 @@ function App() {
   return (
     <div className={`app-shell mode-${theme} palette-${palette} style-${visualStyle} ${mobileMenu ? 'menu-open' : ''}`}>
       <aside className={`sidebar ${mobileMenu ? 'is-open' : ''} ${sidebarCollapsed ? 'is-collapsed' : ''}`}>
+        <button className="sidebar-close" aria-label="Close navigation" onClick={() => setMobileMenu(false)}><X size={20} /></button>
         <button className="sidebar-toggle" aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}>{sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
         <div className="brand"><div className="brand-mark"><CalendarDays size={16} /></div><div><strong>My Daily Space</strong><span>Make room for what matters</span></div></div>
         <div className="sidebar-section-label">Workspace</div>
@@ -129,7 +130,7 @@ function App() {
       {mobileMenu && <button className="scrim" aria-label="Close menu" onClick={() => setMobileMenu(false)} />}
       {profileMenu && <button className="profile-scrim" aria-label="Close profile menu" onClick={() => setProfileMenu(false)} />}
       <main className="main-content">
-        <header className="topbar"><button className="icon-button menu-button" aria-label="Open menu" onClick={() => setMobileMenu(true)}><Menu size={21} /></button><div className="topbar-date"><span className="eyebrow-dot" />{topbarDate}</div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
+        <header className="topbar"><button className="icon-button menu-button" aria-label="Open navigation" onClick={() => setMobileMenu(true)}><PanelLeftOpen size={21} /></button><div className="topbar-date"><span className="eyebrow-dot" />{topbarDate}</div><div className="topbar-actions"><div className="profile-menu"><button className="topbar-profile" aria-label="Profile account" aria-expanded={profileMenu} onClick={() => setProfileMenu((open) => !open)}><UserRound size={18} /></button>{profileMenu && <div className="profile-popover"><strong>Alex Kim</strong><span>Personal space</span><button onClick={() => { setView('settings'); setProfileMenu(false) }}><Settings size={16} /> Settings</button></div>}</div></div></header>
         <div className="page-wrap">
           {view === 'dashboard' && <Dashboard tasks={tasks} notes={notes} todayTasks={todayTasks} progress={progress} onToggle={toggleTask} onOpenTask={setTaskModal} onNavigate={setView} />}
           {view === 'tasks' && <TasksPage tasks={tasks} onToggle={toggleTask} onOpenTask={setTaskModal} onNewTask={() => setTaskModal('new')} />}
